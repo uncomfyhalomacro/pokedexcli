@@ -42,17 +42,6 @@ func displayHelp(_ *Config, _ ...string) error {
 	return nil
 }
 
-func checkPokeCache(key string) ([]byte, bool) {
-	return pkCache.Get(key)
-}
-
-func addToCache(key string, newData []byte) bool {
-	pkCache.Add(key, newData)
-	// Check
-	_, ok := checkPokeCache(key)
-	return ok
-}
-
 func mapNextPage(config *Config, _ ...string) error {
 	var locationData LocationAreas
 	fullURL := baseURL + "/location-area"
@@ -61,7 +50,7 @@ func mapNextPage(config *Config, _ ...string) error {
 	if *Next != "" {
 		fullURL = *Next
 	}
-	cachedData, ok := checkPokeCache(*Next)
+	cachedData, ok := (*pkCache).Get(*Next)
 	if !ok {
 		resp, err := http.Get(fullURL)
 		if err != nil {
@@ -102,7 +91,7 @@ func mapNextPage(config *Config, _ ...string) error {
 		if err != nil {
 			return fmt.Errorf("error, failed to convert body as byte data")
 		}
-		addToCache(fullURL, byteData)
+		(*pkCache).Add(fullURL, byteData)
 		resp.Body.Close()
 	} else {
 		err := json.Unmarshal(cachedData, &locationData)
@@ -129,7 +118,7 @@ func mapNextPage(config *Config, _ ...string) error {
 			previousList = baseURL + "/location-area"
 		}
 		*Previous = previousList
-		addToCache(fullURL, cachedData)
+		(*pkCache).Add(fullURL, cachedData)
 	}
 	return nil
 }
@@ -142,7 +131,7 @@ func mapPreviousPage(config *Config, _ ...string) error {
 	if *Previous != "" {
 		fullURL = *Previous
 	}
-	cachedData, ok := checkPokeCache(*Next)
+	cachedData, ok := (*pkCache).Get(*Next)
 	if !ok {
 		resp, err := http.Get(fullURL)
 		if err != nil {
@@ -182,7 +171,7 @@ func mapPreviousPage(config *Config, _ ...string) error {
 		if err != nil {
 			return fmt.Errorf("error, failed to convert body as byte data")
 		}
-		addToCache(fullURL, byteData)
+		(*pkCache).Add(fullURL, byteData)
 		resp.Body.Close()
 	} else {
 
@@ -210,7 +199,7 @@ func mapPreviousPage(config *Config, _ ...string) error {
 			previousList = baseURL + "/location-area"
 		}
 		*Previous = previousList
-		addToCache(fullURL, cachedData)
+		(*pkCache).Add(fullURL, cachedData)
 	}
 	return nil
 }
