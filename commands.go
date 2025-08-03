@@ -249,11 +249,11 @@ func exploreArea(url string) error {
 		err := json.Unmarshal(cachedData, &pokemonEncounters)
 
 		if err != nil {
-			return fmt.Errorf("error, there was a problem generating map information from cache: %w\n", err)
+			return fmt.Errorf("error, there was a problem generating pokemon list information from cache: %w\n", err)
 		}
 
 		if len(pokemonEncounters) == 0 || pokemonEncounters == nil {
-			return fmt.Errorf("error, map location is empty from cache!")
+			return fmt.Errorf("error, pokemon list is empty from cache!")
 		}
 
 		for _, pokemonEncounter := range pokemonEncounters {
