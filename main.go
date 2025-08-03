@@ -7,8 +7,12 @@ import "os"
 import "net/http"
 import "encoding/json"
 import "log"
+import "github.com/uncomfyhalomacro/pokecache"
+import "io"
 
 const baseURL = "https://pokeapi.co/api/v2"
+
+var pkCache = pokecache.DefaultPokeCache()
 
 type Config struct {
 	Next     string
@@ -37,8 +41,11 @@ type LocationDetails struct {
 var supportedCommands = map[string]cliCommand{}
 
 func runSupportedCommand(config *Config, cmd string, args ...string) error {
-
-	callback := supportedCommands[cmd].callback
+    	command, ok := supportedCommands[cmd]
+    	if !ok {
+        	return fmt.Errorf("command not found: %s\n", cmd)
+    	}
+	callback := command.callback
 	err := callback(config, args...)
 	return err
 }
@@ -59,97 +66,176 @@ func displayHelp(_ *Config, _ ...string) error {
 	return nil
 }
 
+func checkPokeCache(key string) ([]byte, bool) {
+	return pkCache.Get(key)
+}
+
+func addToCache(key string, newData []byte) bool {
+	pkCache.Add(key, newData)
+	// Check
+	_, ok := checkPokeCache(key)
+	return ok
+}
+
 func mapNextPage(config *Config, _ ...string) error {
+	var locationData LocationAreas
 	fullURL := baseURL + "/location-area"
 	Previous := &(*config).Previous
 	Next := &(*config).Next
 	if *Next != "" {
 		fullURL = *Next
 	}
-	resp, err := http.Get(fullURL)
-	if err != nil {
-		return fmt.Errorf("error, there was a problem getting map information: %w\nStatus: %s", err, resp.Status)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\nfull url: %s", resp.StatusCode, resp.Body, fullURL)
-	}
-
-	var locationData LocationAreas
-
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&locationData)
-
-	if err != nil {
-		return fmt.Errorf("error, there was a problem generating map information: %w\nStatus: %s", err, resp.Status)
-	}
-
-	if len(locationData.Results) == 0 || locationData.Results == nil {
-		return fmt.Errorf("error, map location is empty! Status: %s", resp.Status)
-	}
-	for _, location := range locationData.Results {
-		fmt.Println(location.Name + "-area")
-	}
-	nextList, ok := locationData.Next.(string)
+	cachedData, ok := checkPokeCache(*Next)
 	if !ok {
-		nextList = baseURL + "/location-area" // round trip
-	}
+		resp, err := http.Get(fullURL)
+		if err != nil {
+			return fmt.Errorf("error, there was a problem getting map information: %w\nStatus: %s", err, resp.Status)
+		}
+		defer resp.Body.Close()
 
-	*Next = nextList
+		if resp.StatusCode > 299 {
+			log.Fatalf("Response failed with status code: %d and\nbody: %s\nfull url: %s", resp.StatusCode, resp.Body, fullURL)
+		}
 
-	previousList, ok := locationData.Previous.(string)
-	if !ok {
-		previousList = ""
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(&locationData)
+
+		if err != nil {
+			return fmt.Errorf("error, there was a problem generating map information: %w\nStatus: %s", err, resp.Status)
+		}
+
+		if len(locationData.Results) == 0 || locationData.Results == nil {
+			return fmt.Errorf("error, map location is empty! Status: %s", resp.Status)
+		}
+		for _, location := range locationData.Results {
+			fmt.Println(location.Name)
+		}
+		nextList, ok := locationData.Next.(string)
+		if !ok {
+			nextList = baseURL + "/location-area" // round trip
+		}
+
+		*Next = nextList
+
+		previousList, ok := locationData.Previous.(string)
+		if !ok {
+			previousList = ""
+		}
+		*Previous = previousList
+
+		byteData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error, failed to convert body as byte data")
+		}
+		addToCache(fullURL, byteData)
+	} else {
+		err := json.Unmarshal(cachedData, &locationData)
+
+		if err != nil {
+			return fmt.Errorf("error, there was a problem generating map information from cache: %w\n", err)
+		}
+
+		if len(locationData.Results) == 0 || locationData.Results == nil {
+			return fmt.Errorf("error, map location is empty from cache!")
+		}
+		for _, location := range locationData.Results {
+			fmt.Println(location.Name)
+		}
+		nextList, ok := locationData.Next.(string)
+		if !ok {
+			nextList = baseURL + "/location-area" // round trip
+		}
+
+		*Next = nextList
+
+		previousList, ok := locationData.Previous.(string)
+		if !ok {
+			previousList = baseURL + "/location-area"
+		}
+		*Previous = previousList
+		addToCache(fullURL, cachedData)
 	}
-	*Previous = previousList
 	return nil
 }
 
 func mapPreviousPage(config *Config, _ ...string) error {
+	var locationData LocationAreas
 	fullURL := baseURL + "/location-area"
 	Previous := &(*config).Previous
 	Next := &(*config).Next
 	if *Previous != "" {
 		fullURL = *Previous
 	}
-	resp, err := http.Get(fullURL)
-	if err != nil {
-		return fmt.Errorf("error, there was a problem getting map information: %w\nStatus: %s", err, resp.Status)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode > 299 {
-		log.Fatalf("Response failed with status code: %d and\nbody: %s\n", resp.StatusCode, resp.Body)
-	}
-
-	var locationData LocationAreas
-
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&locationData)
-
-	if err != nil {
-		return fmt.Errorf("error, there was a problem generating map information: %w\nStatus: %s", err, resp.Status)
-	}
-
-	if len(locationData.Results) == 0 || locationData.Results == nil {
-		return fmt.Errorf("error, map location is empty! Status: %s", resp.Status)
-	}
-	for _, location := range locationData.Results {
-		fmt.Println(location.Name + "-area")
-	}
-	nextList, ok := locationData.Next.(string)
+	cachedData, ok := checkPokeCache(*Next)
 	if !ok {
-		nextList = baseURL + "/location-area" // round trip
-	}
+		resp, err := http.Get(fullURL)
+		if err != nil {
+			return fmt.Errorf("error, there was a problem getting map information: %w\nStatus: %s", err, resp.Status)
+		}
+		defer resp.Body.Close()
 
-	*Next = nextList
+		if resp.StatusCode > 299 {
+			log.Fatalf("Response failed with status code: %d and\nbody: %s\n", resp.StatusCode, resp.Body)
+		}
 
-	previousList, ok := locationData.Previous.(string)
-	if !ok {
-		previousList = ""
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(&locationData)
+
+		if err != nil {
+			return fmt.Errorf("error, there was a problem generating map information: %w\nStatus: %s", err, resp.Status)
+		}
+
+		if len(locationData.Results) == 0 || locationData.Results == nil {
+			return fmt.Errorf("error, map location is empty! Status: %s", resp.Status)
+		}
+		for _, location := range locationData.Results {
+			fmt.Println(location.Name)
+		}
+		nextList, ok := locationData.Next.(string)
+		if !ok {
+			nextList = baseURL + "/location-area" // round trip
+		}
+
+		*Next = nextList
+
+		previousList, ok := locationData.Previous.(string)
+		if !ok {
+			previousList = ""
+		}
+		*Previous = previousList
+		byteData, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("error, failed to convert body as byte data")
+		}
+		addToCache(fullURL, byteData)
+	} else {
+
+		err := json.Unmarshal(cachedData, &locationData)
+
+		if err != nil {
+			return fmt.Errorf("error, there was a problem generating map information from cache: %w\n", err)
+		}
+
+		if len(locationData.Results) == 0 || locationData.Results == nil {
+			return fmt.Errorf("error, map location is empty from cache!")
+		}
+		for _, location := range locationData.Results {
+			fmt.Println(location.Name)
+		}
+		nextList, ok := locationData.Next.(string)
+		if !ok {
+			nextList = baseURL + "/location-area" // round trip
+		}
+
+		*Next = nextList
+
+		previousList, ok := locationData.Previous.(string)
+		if !ok {
+			previousList = baseURL + "/location-area"
+		}
+		*Previous = previousList
+		addToCache(fullURL, cachedData)
 	}
-	*Previous = previousList
 	return nil
 }
 func cleanInput(text string) []string {
