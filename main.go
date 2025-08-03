@@ -17,10 +17,10 @@ var pkCache = pokecache.DefaultPokeCache()
 var supportedCommands = map[string]cliCommand{}
 
 func runSupportedCommand(config *Config, cmd string, args ...string) error {
-    	command, ok := supportedCommands[cmd]
-    	if !ok {
-        	return fmt.Errorf("command not found: %s\n", cmd)
-    	}
+	command, ok := supportedCommands[cmd]
+	if !ok {
+		return fmt.Errorf("command not found: %s\n", cmd)
+	}
 	callback := command.callback
 	err := callback(config, args...)
 	return err
