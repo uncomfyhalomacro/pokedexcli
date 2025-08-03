@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ const baseURL = "https://pokeapi.co/api/v2"
 
 var pkCache = pokecache.DefaultPokeCache()
 
-func runSupportedCommand(config *Config, cmd string, args ...string) error {
+func RunSupportedCommand(config *Config, cmd string, args ...string) error {
 	command, ok := supportedCommands[cmd]
 	if !ok {
 		return fmt.Errorf("command not found: %s\n", cmd)
