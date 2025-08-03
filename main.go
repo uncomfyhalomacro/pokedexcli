@@ -50,7 +50,7 @@ func commandExit(_ *Config, _ ...string) error {
 }
 
 func displayHelp(_ *Config, _ ...string) error {
-	fmt.Println("Welcome to the Pokedex!\nUsage:\n")
+	fmt.Printf("Welcome to the Pokedex!\nUsage:\n\n")
 	var display string
 	for commandName, fieldNames := range supportedCommands {
 		display = fmt.Sprintf("%s: %s\n", commandName, fieldNames.description)
