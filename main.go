@@ -33,8 +33,7 @@ type LocationDetails struct {
 	URL  string `json:"url"`
 }
 
-// Initialise the global map variable. Map cannot be constants, unfortunate...
-
+// namespacing will cause an initialisation cycle.
 var supportedCommands = map[string]cliCommand{}
 
 func runSupportedCommand(config *Config, cmd string, args ...string) error {
