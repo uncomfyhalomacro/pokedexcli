@@ -8,7 +8,6 @@ import "net/http"
 import "encoding/json"
 import "log"
 import "github.com/uncomfyhalomacro/pokecache"
-import "io"
 
 const baseURL = "https://pokeapi.co/api/v2"
 
@@ -91,7 +90,6 @@ func mapNextPage(config *Config, _ ...string) error {
 		if err != nil {
 			return fmt.Errorf("error, there was a problem getting map information: %w\nStatus: %s", err, resp.Status)
 		}
-		defer resp.Body.Close()
 
 		if resp.StatusCode > 299 {
 			log.Fatalf("Response failed with status code: %d and\nbody: %s\nfull url: %s", resp.StatusCode, resp.Body, fullURL)
@@ -123,11 +121,12 @@ func mapNextPage(config *Config, _ ...string) error {
 		}
 		*Previous = previousList
 
-		byteData, err := io.ReadAll(resp.Body)
+		byteData, err := json.Marshal(locationData)
 		if err != nil {
 			return fmt.Errorf("error, failed to convert body as byte data")
 		}
 		addToCache(fullURL, byteData)
+		resp.Body.Close()
 	} else {
 		err := json.Unmarshal(cachedData, &locationData)
 
@@ -172,7 +171,6 @@ func mapPreviousPage(config *Config, _ ...string) error {
 		if err != nil {
 			return fmt.Errorf("error, there was a problem getting map information: %w\nStatus: %s", err, resp.Status)
 		}
-		defer resp.Body.Close()
 
 		if resp.StatusCode > 299 {
 			log.Fatalf("Response failed with status code: %d and\nbody: %s\n", resp.StatusCode, resp.Body)
@@ -203,11 +201,12 @@ func mapPreviousPage(config *Config, _ ...string) error {
 			previousList = ""
 		}
 		*Previous = previousList
-		byteData, err := io.ReadAll(resp.Body)
+		byteData, err := json.Marshal(locationData)
 		if err != nil {
 			return fmt.Errorf("error, failed to convert body as byte data")
 		}
 		addToCache(fullURL, byteData)
+		resp.Body.Close()
 	} else {
 
 		err := json.Unmarshal(cachedData, &locationData)
