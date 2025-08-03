@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+    "testing"
+	"github.com/uncomfyhalomacro/pokedexcli/internal/core"
+)
 
 func TestCleanInput(t *testing.T) {
 	testCases := []struct {
@@ -23,7 +26,7 @@ like   with more space!
 	}
 
 	for _, testCase := range testCases {
-		actual := cleanInput(testCase.input)
+		actual := core.CleanInput(testCase.input)
 
 		for i := range actual {
 			word := actual[i]
