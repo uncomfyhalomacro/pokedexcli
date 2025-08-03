@@ -12,66 +12,57 @@ type cliCommand struct {
 }
 
 type LocationAreas struct {
-	Count    int               `json:"count"`
-	Next     any               `json:"next"`     // NOTE: This can be null. If you are at the last page, the value is null since there are no "next" pages
-	Previous any               `json:"previous"` // NOTE: This can be null. If you are at the first page, the value is null since there are no "previous" pages
-	Results  []LocationDetails `json:"results"`
-}
-
-type LocationDetails struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	Count    int      `json:"count"`
+	Next     any      `json:"next"`     // NOTE: This can be null. If you are at the last page, the value is null since there are no "next" pages
+	Previous any      `json:"previous"` // NOTE: This can be null. If you are at the first page, the value is null since there are no "previous" pages
+	Results  []Detail `json:"results"`
 }
 
 type LocationEncounterDetails struct {
-	EncounterMethodRates []struct {
-		EncounterMethod struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		} `json:"encounter_method"`
-		VersionDetails []struct {
-			Rate    int `json:"rate"`
-			Version struct {
-				Name string `json:"name"`
-				URL  string `json:"url"`
-			} `json:"version"`
-		} `json:"version_details"`
-	} `json:"encounter_method_rates"`
-	GameIndex int `json:"game_index"`
-	ID        int `json:"id"`
-	Location  struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"location"`
-	Name  string `json:"name"`
-	Names []struct {
-		Language struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		} `json:"language"`
-		Name string `json:"name"`
-	} `json:"names"`
-	PokemonEncounters []struct {
-		Pokemon struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		} `json:"pokemon"`
-		VersionDetails []struct {
-			EncounterDetails []struct {
-				Chance          int           `json:"chance"`
-				ConditionValues []interface{} `json:"condition_values"`
-				MaxLevel        int           `json:"max_level"`
-				Method          struct {
-					Name string `json:"name"`
-					URL  string `json:"url"`
-				} `json:"method"`
-				MinLevel int `json:"min_level"`
-			} `json:"encounter_details"`
-			MaxChance int `json:"max_chance"`
-			Version   struct {
-				Name string `json:"name"`
-				URL  string `json:"url"`
-			} `json:"version"`
-		} `json:"version_details"`
-	} `json:"pokemon_encounters"`
+	EncounterMethodRates []EncounterMethodRate `json:"encounter_method_rates"`
+	GameIndex            int                   `json:"game_index"`
+	ID                   int                   `json:"id"`
+	Location             Detail                `json:"location"`
+	Name                 string                `json:"name"`
+	Names                []NameAndLanguage     `json:"names"`
+	PokemonEncounters    []PokemonEncounter    `json:"pokemon_encounters"`
+}
+
+type EncounterMethodRate struct {
+	EncounterMethod Detail                             `json:"encounter_method"`
+	VersionDetails  []EncounterMethodRateVersionDetail `json:"version_details"`
+}
+
+type EncounterMethodRateVersionDetail struct {
+	Rate    int    `json:"rate"`
+	Version Detail `json:"version"`
+}
+
+type NameAndLanguage struct {
+	Language Detail `json:"language"`
+	Name     string `json:"name"`
+}
+
+type PokemonEncounter struct {
+	Pokemon        Detail                          `json:"pokemon"`
+	VersionDetails []PokemonEncounterVersionDetail `json:"version_details"`
+}
+
+type PokemonEncounterVersionDetail struct {
+	EncounterDetails []EncounterDetail `json:"encounter_details"`
+	MaxChance        int               `json:"max_chance"`
+	Version          Detail            `json:"version"`
+}
+
+type EncounterDetail struct {
+	Chance          int    `json:"chance"`
+	ConditionValues []any  `json:"condition_values"`
+	MaxLevel        int    `json:"max_level"`
+	Method          Detail `json:"method"`
+	MinLevel        int    `json:"min_level"`
+}
+
+type Detail struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
 }
