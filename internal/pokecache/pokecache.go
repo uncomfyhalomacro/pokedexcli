@@ -11,7 +11,7 @@ type pokeCacheEntry struct {
 	val       []byte
 }
 type PokeCache struct {
-	mu             sync.Mutex
+	mu             sync.RWMutex
 	entries        map[string]pokeCacheEntry
 	expiryInterval time.Duration
 }
@@ -36,7 +36,7 @@ func NewPokeCache(interval time.Duration) *PokeCache {
 		entries:        emptyEntries,
 		expiryInterval: interval,
 	}
-	go pk.reapLoop()
+	go (*pk).reapLoop()
 	return pk
 }
 
@@ -59,8 +59,8 @@ func (pk *PokeCache) Add(key string, newData []byte) {
 
 func (pk *PokeCache) Get(key string) ([]byte, bool) {
 	log.Println("Getting cache entry....")
-	pk.mu.Lock()
-	defer pk.mu.Unlock()
+	pk.mu.RLock()
+	defer pk.mu.RUnlock()
 	cacheEntry, ok := pk.entries[key]
 	if !ok {
 		log.Printf("Cache entry is outdated or does not exist. Entry: %s\n", key)
