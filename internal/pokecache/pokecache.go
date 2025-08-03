@@ -17,30 +17,22 @@ type PokeCache struct {
 }
 
 func (pk *PokeCache) reapLoop() {
-	pk.mu.Lock()
-	defer pk.mu.Unlock()
-	tick := time.Tick(pk.expiryInterval)
-	for range tick {
-		currentTime := time.Now()
-		var toBeDeleted []string
+	ticker := time.NewTicker(pk.expiryInterval)
+	defer ticker.Stop()
+	for c := range ticker.C {
+		pk.mu.Lock()
 		for k, v := range pk.entries {
-			addedTime := v.createdAt.Add(pk.expiryInterval)
-			if currentTime.After(addedTime) {
-				log.Printf("Cache entry has expired. Entry: %s\n", k)
-				toBeDeleted = append(toBeDeleted, k)
+			if c.After(v.createdAt.Add(pk.expiryInterval)) {
+				delete(pk.entries, k)
 			}
 		}
-		for _, k := range toBeDeleted {
-			log.Printf("Deleting cache entry: %s\n", k)
-			delete(pk.entries, k)
-			log.Printf("Deleted cache entry: %s\n", k)
-		}
+		pk.mu.Unlock()
 	}
 }
 
-func NewPokeCache(interval time.Duration) PokeCache {
-    	emptyEntries := make(map[string]pokeCacheEntry)
-	pk := PokeCache{
+func NewPokeCache(interval time.Duration) *PokeCache {
+	emptyEntries := make(map[string]pokeCacheEntry)
+	pk := &PokeCache{
 		entries:        emptyEntries,
 		expiryInterval: interval,
 	}
@@ -48,8 +40,8 @@ func NewPokeCache(interval time.Duration) PokeCache {
 	return pk
 }
 
-func DefaultPokeCache() PokeCache {
-	return NewPokeCache(8)
+func DefaultPokeCache() *PokeCache {
+	return NewPokeCache(8 * time.Second)
 }
 
 // "key" is the previous and next field URL names
