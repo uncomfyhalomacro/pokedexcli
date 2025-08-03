@@ -7,34 +7,11 @@ import "os"
 import "net/http"
 import "encoding/json"
 import "log"
-import "github.com/uncomfyhalomacro/pokecache"
+import "github.com/uncomfyhalomacro/pokedexcli/internal/pokecache"
 
 const baseURL = "https://pokeapi.co/api/v2"
 
 var pkCache = pokecache.DefaultPokeCache()
-
-type Config struct {
-	Next     string
-	Previous string
-}
-
-type cliCommand struct {
-	name        string
-	description string
-	callback    func(config *Config, args ...string) error
-}
-
-type LocationAreas struct {
-	Count    int               `json:"count"`
-	Next     any               `json:"next"`     // NOTE: This can be null. If you are at the last page, the value is null since there are no "next" pages
-	Previous any               `json:"previous"` // NOTE: This can be null. If you are at the first page, the value is null since there are no "previous" pages
-	Results  []LocationDetails `json:"results"`
-}
-
-type LocationDetails struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
 
 // namespacing will cause an initialisation cycle.
 var supportedCommands = map[string]cliCommand{}
