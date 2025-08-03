@@ -1,9 +1,9 @@
 package main
 
 import (
-    "fmt"
-    "bufio"
-    "os"
+	"bufio"
+	"fmt"
+	"os"
 )
 
 var supportedCommands = map[string]cliCommand{}
@@ -29,6 +29,11 @@ func init() {
 			name:        "map",
 			description: "Displays the previous list of locations of the Pokemon World!",
 			callback:    mapPreviousPage,
+		},
+		"explore": {
+			name:        "explore",
+			description: "Display the list of pokemon species in each area. It can receive multiple areas as arguments.",
+			callback:    exploreAreas,
 		},
 	}
 }

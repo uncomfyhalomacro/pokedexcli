@@ -1,15 +1,16 @@
 package main
 
 import (
-    "fmt"
-    "os"
-    "net/http"
-    "github.com/uncomfyhalomacro/pokedexcli/internal/pokecache"
-    "encoding/json"
-    "log"
+	"encoding/json"
+	"fmt"
+	"github.com/uncomfyhalomacro/pokedexcli/internal/pokecache"
+	"log"
+	"net/http"
+	"os"
 )
 
 const baseURL = "https://pokeapi.co/api/v2"
+
 var pkCache = pokecache.DefaultPokeCache()
 
 func runSupportedCommand(config *Config, cmd string, args ...string) error {
@@ -197,5 +198,69 @@ func mapPreviousPage(config *Config, _ ...string) error {
 		*Previous = previousList
 		(*pkCache).Add(fullURL, cachedData)
 	}
+	return nil
+}
+
+// This is just a wrapper around the `exploreArea` function. It receives many area as arguments
+func exploreAreas(_ *Config, areas ...string) error {
+	fullURL := baseURL + "/location-area/" // NOTE: Take note of the last slash. It's there so I don't need to append it during a for loop.
+	for _, area := range areas {
+		areaURL := fullURL + area
+		fmt.Printf("Exploring %s...\n", area)
+		err := exploreArea(areaURL)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// This is the original caller
+func exploreArea(url string) error {
+	cachedData, ok := (*pkCache).Get(url)
+	if !ok {
+		var areaData LocationEncounterDetails
+		resp, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("error, there was a problem getting pokemon list information: %w\nStatus: %s", err, resp.Status)
+		}
+
+		if resp.StatusCode > 299 {
+			log.Fatalf("Response failed with status code: %d and\nbody: %s\n", resp.StatusCode, resp.Body)
+		}
+
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(&areaData)
+
+		if err != nil {
+			return fmt.Errorf("error, there was a problem generating pokemon list information: %w\nStatus: %s", err, resp.Status)
+		}
+		for _, pokemonEncounter := range areaData.PokemonEncounters {
+			fmt.Println(pokemonEncounter.Pokemon.Name)
+		}
+		byteData, err := json.Marshal(areaData.PokemonEncounters)
+		if err != nil {
+			return fmt.Errorf("error, failed to convert body as byte data")
+		}
+		(*pkCache).Add(url, byteData)
+		resp.Body.Close()
+	} else {
+		var pokemonEncounters []PokemonEncounter
+		err := json.Unmarshal(cachedData, &pokemonEncounters)
+
+		if err != nil {
+			return fmt.Errorf("error, there was a problem generating map information from cache: %w\n", err)
+		}
+
+		if len(pokemonEncounters) == 0 || pokemonEncounters == nil {
+			return fmt.Errorf("error, map location is empty from cache!")
+		}
+
+		for _, pokemonEncounter := range pokemonEncounters {
+			fmt.Println(pokemonEncounter.Pokemon.Name)
+		}
+		(*pkCache).Add(url, cachedData)
+	}
+
 	return nil
 }
