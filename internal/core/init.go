@@ -1,4 +1,5 @@
 package core
+
 var supportedCommands = map[string]cliCommand{}
 
 func init() {
@@ -28,6 +29,20 @@ func init() {
 			description: "Display the list of pokemon species in each area. It can receive multiple areas as arguments.",
 			callback:    exploreAreas,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Attempt to catch a pokemon species with your imaginary pokeball. Don't cry when you fail.",
+			callback:    catchPokemon,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Inspect captured pokemon or pokemons in your Pokedex.",
+			callback:    inspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Get the list of pokemons you have in your Pokedex!",
+			callback:    pokedex,
+		},
 	}
 }
-

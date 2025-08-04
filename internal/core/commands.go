@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"github.com/uncomfyhalomacro/pokedexcli/internal/pokecache"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const baseURL = "https://pokeapi.co/api/v2"
 
 var pkCache = pokecache.DefaultPokeCache()
+var capturedPokemons = map[string]PokemonDetails{}
 
 func RunSupportedCommand(config *Config, cmd string, args ...string) error {
 	command, ok := supportedCommands[cmd]
@@ -263,4 +266,130 @@ func exploreArea(url string) error {
 	}
 
 	return nil
+}
+
+func catchPokemon(_ *Config, args ...string) error {
+	if len(args) > 1 {
+		return fmt.Errorf("error, only needs 1 argument\n")
+	}
+
+	if len(args) == 0 {
+		return fmt.Errorf("error, please provide a pokemon name or ID\n")
+	}
+
+	pokemon, err := fetchPokemonDetail(args[0])
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemon.Name)
+	getChance := rand.Intn(pokemon.BaseExperience + 30)
+	if getChance >= pokemon.BaseExperience {
+		fmt.Printf("You have caught %s! 🎉\n", pokemon.Name)
+		capturedPokemons[args[0]] = pokemon
+	} else {
+		fmt.Printf("%s escaped and ran away! 😩\n", pokemon.Name)
+	}
+	return nil
+}
+
+func pokedex(_ *Config, _ ...string) error {
+	fmt.Println("Your Pokedex:")
+	if len(capturedPokemons) == 0 {
+		return fmt.Errorf("Your Pokedex is empty... Try capuring a pokemon first.\n")
+	}
+	for k, _ := range capturedPokemons {
+		fmt.Printf("  - %s\n", k)
+	}
+	return nil
+
+}
+
+func inspect(_ *Config, pokemonNames ...string) error {
+	if len(capturedPokemons) == 0 {
+		return fmt.Errorf("Your Pokedex is empty... Try capuring a pokemon first.\n")
+	}
+	if len(pokemonNames) == 0 {
+		for k, _ := range capturedPokemons {
+			pokemonNames = append(pokemonNames, k)
+		}
+	}
+	for _, pokemonName := range pokemonNames {
+		pokemon, ok := capturedPokemons[pokemonName]
+		if !ok {
+			_, err := fetchPokemonDetail(pokemonName)
+			if err != nil {
+				fmt.Printf("This pokemon species does not exist.\n")
+
+			} else {
+				fmt.Printf("It seems you have not captured %s yet.\n", pokemonName)
+			}
+		} else {
+			var stats []string
+			var types []string
+			for _, stat := range pokemon.Stats {
+				stats = append(stats, fmt.Sprintf("  -%s: %d", stat.Stat.Name, stat.BaseStat))
+			}
+			for _, type_ := range pokemon.Types {
+				types = append(types, fmt.Sprintf("  - %s", type_.Type.Name))
+			}
+
+			details := fmt.Sprintf(`Name: %s
+Height: %d
+Weight: %d
+Stats:
+%s
+Types:
+%s
+`, pokemon.Name, pokemon.Height, pokemon.Weight, strings.Join(stats, "\n"), strings.Join(types, "\n"))
+			fmt.Println(details)
+
+		}
+	}
+	return nil
+}
+
+func fetchPokemonDetail(pokemonNameOrId string) (PokemonDetails, error) {
+	var pokemon PokemonDetails
+	fullURL := baseURL + "/pokemon/" + pokemonNameOrId
+	cachedData, ok := (*pkCache).Get(fullURL)
+	if !ok {
+		resp, err := http.Get(fullURL)
+		if err != nil {
+			return PokemonDetails{}, fmt.Errorf("error, there was a problem getting pokemon information: %w\nStatus: %s", err, resp.Status)
+		}
+
+		if resp.StatusCode > 299 {
+			return PokemonDetails{}, fmt.Errorf("Response failed with status code: %d and\nbody: %s\nPokemon species with name or ID, %s, does not exist.\n", resp.StatusCode, resp.Body, pokemonNameOrId)
+		}
+
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(&pokemon)
+
+		if err != nil {
+			return PokemonDetails{}, fmt.Errorf("error, there was a problem generating pokemon list information: %w\nStatus: %s", err, resp.Status)
+		}
+		byteData, err := json.Marshal(pokemon)
+		if err != nil {
+			return PokemonDetails{}, fmt.Errorf("error, failed to convert body as byte data")
+		}
+		(*pkCache).Add(fullURL, byteData)
+		resp.Body.Close()
+		if err != nil {
+			return PokemonDetails{}, fmt.Errorf("error, failed to convert body as byte data")
+		}
+		(*pkCache).Add(fullURL, byteData)
+		resp.Body.Close()
+
+	} else {
+		err := json.Unmarshal(cachedData, &pokemon)
+
+		if err != nil {
+			return PokemonDetails{}, fmt.Errorf("error, there was a problem fetching pokemon from cache: %w\n", err)
+		}
+
+		(*pkCache).Add(fullURL, cachedData)
+
+	}
+	return pokemon, nil
+
 }
