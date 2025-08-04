@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"github.com/uncomfyhalomacro/pokedexcli/internal/core"
+	"os"
 )
 
 func main() {

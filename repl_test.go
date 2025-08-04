@@ -1,8 +1,8 @@
 package main
 
 import (
-    "testing"
 	"github.com/uncomfyhalomacro/pokedexcli/internal/core"
+	"testing"
 )
 
 func TestCleanInput(t *testing.T) {
